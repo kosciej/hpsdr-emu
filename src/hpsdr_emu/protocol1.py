@@ -277,7 +277,7 @@ class Protocol1Server(asyncio.DatagramProtocol):
             struct.pack_into(">HH", buf, offset + 4, exc, fwd)
         elif c0_addr == 0x10:
             # C1-C2: Reverse power (AIN2), C3-C4: PA volts (AIN3)
-            if s.ptt:
+            if s.ptt and s.tx_drive > 0:
                 fwd = (s.tx_drive * s.tx_drive) >> 4
                 rev = max(1, fwd // 50)
             else:

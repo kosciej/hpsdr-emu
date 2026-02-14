@@ -205,7 +205,7 @@ impl Protocol1Server {
             }
             0x10 => {
                 // C1-C2: Reverse power (AIN2), C3-C4: PA volts (AIN3)
-                let rev = if s.ptt {
+                let rev = if s.ptt && s.tx_drive > 0 {
                     let d = s.tx_drive as u16;
                     let fwd = (d * d) >> 4;
                     (fwd / 50).max(1)

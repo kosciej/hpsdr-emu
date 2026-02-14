@@ -367,7 +367,16 @@ class Protocol2Server:
         seq = self.state.next_seq("hp_status")
         struct.pack_into(">I", buf, 0, seq)
         buf[4] = 1 if self.state.ptt else 0  # PTT in bit 0
-        # Bytes 5-59: all zeros (no overload, no power)
+
+        s = self.state
+        if s.ptt and s.tx_drive > 0:
+            exc = s.tx_drive * 10
+            fwd = (s.tx_drive * s.tx_drive) >> 4
+            rev = max(1, fwd // 50)
+            struct.pack_into(">H", buf, 6, exc)
+            struct.pack_into(">H", buf, 14, fwd)
+            struct.pack_into(">H", buf, 22, rev)
+
         return bytes(buf)
 
     async def _ddc_iq_loop(self, ddc_index: int) -> None:

@@ -255,7 +255,7 @@ impl SignalGenerator {
 // EchoBuffer
 // ---------------------------------------------------------------------------
 
-const ECHO_ATTENUATION_DB: f64 = 80.0;
+const ECHO_ATTENUATION_DB: f64 = 60.0;
 
 pub struct EchoBuffer {
     pub sample_rate: u32,
