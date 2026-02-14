@@ -263,7 +263,7 @@ pub struct EchoBuffer {
     attenuation: f64,
     echoes: HashMap<u32, Vec<Complex<f64>>>,
     playback_pos: HashMap<u32, usize>,
-    shift_phase: HashMap<u32, f64>, // per-freq time accumulator for freq shift
+    shift_phase: HashMap<u32, f64>, // per-freq angle accumulator (radians)
     recording: Vec<Complex<f64>>,
     recording_freq: u32,
     is_recording: bool,
@@ -351,7 +351,7 @@ impl EchoBuffer {
 
         let freqs: Vec<u32> = self.echoes.keys().copied().collect();
         for freq in freqs {
-            let offset_hz = freq as f64 - rx_freq as f64;
+            let offset_hz = rx_freq as f64 - freq as f64;
             if offset_hz.abs() > half_bw {
                 continue;
             }
@@ -373,19 +373,19 @@ impl EchoBuffer {
             }
             self.playback_pos.insert(freq, pos);
 
+            // Frequency-shift: track accumulated angle (radians) so the
+            // shift oscillator transitions smoothly when offset changes.
             if offset_hz != 0.0 {
                 let sr = sample_rate as f64;
                 let phase0 = *self.shift_phase.get(&freq).unwrap_or(&0.0);
+                let step = 2.0 * PI * offset_hz / sr;
                 for (i, s) in chunk.iter_mut().enumerate() {
-                    let t = i as f64 / sr + phase0;
-                    let angle = 2.0 * PI * offset_hz * t;
-                    let shift = Complex::new(angle.cos(), angle.sin());
-                    *s *= shift;
+                    let angle = phase0 + step * i as f64;
+                    *s *= Complex::new(angle.cos(), angle.sin());
                 }
-                let mut new_phase = phase0 + n_samples as f64 / sr;
-                let period = 1.0 / offset_hz.abs();
-                if new_phase > 1000.0 * period {
-                    new_phase %= period;
+                let mut new_phase = phase0 + step * n_samples as f64;
+                if new_phase.abs() > 1e6 {
+                    new_phase %= 2.0 * PI;
                 }
                 self.shift_phase.insert(freq, new_phase);
             }

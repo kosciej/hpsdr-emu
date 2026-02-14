@@ -141,7 +141,7 @@ cargo run --release -- --radio angelia --mac 00:1c:c0:a2:22:5e
 
 - **Protocol 2 TX is non-functional** (Python): TX audio and TX IQ packets are received and logged but not processed. Echo mode is not supported in Protocol 2.
 - **Power/SWR metering not working** (Protocol 1, both implementations): Forward and reverse power ADC values are sent in the control response bytes (addresses 0x08, 0x10) but the values or encoding are incorrect — Thetis does not show power or SWR readings.
-- **Echo position lost on frequency change** (both implementations): When the RX frequency is changed, previously recorded echoes are keyed by their original TX frequency but the frequency-shift playback does not account for the new tuning offset correctly, causing echoes to appear at the wrong position or disappear.
+- **Echo disappears when retuning far away** (both implementations): Echoes are keyed by their original TX frequency. When the RX frequency moves more than half the sample rate away, the echo falls outside the DDC bandwidth and is muted to prevent aliasing.
 
 ## Project structure
 

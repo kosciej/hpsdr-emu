@@ -304,7 +304,7 @@ class EchoBuffer:
         self._recording_freq: int = 0
         self._is_recording: bool = False
         self._playback_pos: dict[int, int] = {}  # per-freq read position
-        self._shift_phase: dict[int, float] = {}  # per-freq time accumulator for freq shift
+        self._shift_phase: dict[int, float] = {}  # per-freq angle accumulator (radians)
 
     def start_recording(self, tx_freq: int) -> None:
         """Begin recording TX IQ at the given frequency."""
@@ -367,7 +367,7 @@ class EchoBuffer:
         half_bw = sample_rate / 2.0
 
         for freq, echo_buf in self._echoes.items():
-            offset_hz = freq - rx_freq
+            offset_hz = rx_freq - freq
             if abs(offset_hz) > half_bw:
                 continue
 
@@ -387,15 +387,17 @@ class EchoBuffer:
                 remaining -= available
             self._playback_pos[freq] = pos
 
-            # Frequency-shift if echo is not at DDC center (phase-continuous)
+            # Frequency-shift if echo is not at DDC center.
+            # Track accumulated angle (radians) so the shift oscillator
+            # transitions smoothly when offset_hz changes due to retuning.
             if offset_hz != 0:
                 phase0 = self._shift_phase.get(freq, 0.0)
-                t = np.arange(n_samples) / sample_rate + phase0
-                chunk = chunk * np.exp(2j * np.pi * offset_hz * t)
-                new_phase = phase0 + n_samples / sample_rate
-                period = 1.0 / abs(offset_hz)
-                if new_phase > 1000.0 * period:
-                    new_phase %= period
+                step = 2.0 * np.pi * offset_hz / sample_rate
+                angles = phase0 + step * np.arange(n_samples)
+                chunk = chunk * np.exp(1j * angles)
+                new_phase = phase0 + step * n_samples
+                if abs(new_phase) > 1e6:
+                    new_phase %= 2.0 * np.pi
                 self._shift_phase[freq] = new_phase
 
             result += chunk
